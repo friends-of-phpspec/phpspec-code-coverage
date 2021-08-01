@@ -4,195 +4,109 @@ declare(strict_types=1);
 
 namespace spec\FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener;
 
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Exception\ConfigurationException;
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener\CodeCoverageListener;
 use PhpSpec\Console\ConsoleIO;
 use PhpSpec\Event\SuiteEvent;
 use PhpSpec\ObjectBehavior;
-use Prophecy\Argument;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
+use SebastianBergmann\CodeCoverage\Driver\Driver;
 use SebastianBergmann\CodeCoverage\Filter;
-use SebastianBergmann\CodeCoverage\Report;
+use SebastianBergmann\CodeCoverage\RawCodeCoverageData;
+use stdClass;
 
 /**
+ * Disabled due to tests breaking as php-code-coverage marked their classes
+ * final and we cannot mock them. The tests should be converted into proper
+ * functional (integration) tests instead. This file is left for reference.
+ *
+ * @see https://github.com/leanphp/phpspec-code-coverage/issues/19
+ *
  * @author Henrik Bjornskov
  */
 class CodeCoverageListenerSpec extends ObjectBehavior
 {
+    public function it_can_process_all_directory_filtering_options(SuiteEvent $event)
+    {
+        $this->setOptions([
+            'blacklist' => [
+                'src',
+                ['directory' => 'src', 'suffix' => 'Spec.php', 'prefix' => 'Get'],
+                ['directory' => 'src', 'suffix' => 'Test.php'],
+                ['directory' => 'src'],
+            ],
+        ]);
+
+        $this
+            ->shouldNotThrow(ConfigurationException::class)
+            ->during('beforeSuite', [$event]);
+    }
+
     public function it_is_initializable()
     {
         $this->shouldHaveType(CodeCoverageListener::class);
     }
 
-    public function let(ConsoleIO $io)
+    public function it_will_ignore_unknown_directory_filtering_options(SuiteEvent $event)
     {
-        $this->beConstructedWith($io, new CodeCoverage(), []);
+        $this->setOptions([
+            'whitelist' => [
+                ['directory' => 'test', 'foobar' => 'baz'],
+            ],
+        ]);
+
+        $this
+            ->shouldNotThrow(ConfigurationException::class)
+            ->during('beforeSuite', [$event]);
     }
 
-    /**
-     * Disabled due to tests breaking as php-code-coverage marked their classes
-     * final and we cannot mock them. The tests should be converted into proper
-     * functional (integration) tests instead. This file is left for reference.
-     *
-     * @see https://github.com/leanphp/phpspec-code-coverage/issues/19
-     *
-     * function let(ConsoleIO $io, CodeCoverage $coverage)
-     * {
-     * $this->beConstructedWith($io, $coverage, array());
-     * }
-     *
-     * function it_is_initializable()
-     * {
-     * $this->shouldHaveType('LeanPHP\PhpSpec\CodeCoverage\Listener\CodeCoverageListener');
-     * }
-     *
-     * function it_should_run_all_reports(
-     * CodeCoverage $coverage,
-     * Report\Clover $clover,
-     * Report\PHP $php,
-     * SuiteEvent $event,
-     * ConsoleIO $io
-     * ) {
-     * $reports = array(
-     * 'clover' => $clover,
-     * 'php' =>  $php
-     * );
-     *
-     * $io->isVerbose()->willReturn(false);
-     *
-     * $this->beConstructedWith($io, $coverage, $reports);
-     * $this->setOptions(array(
-     * 'format' => array('clover', 'php'),
-     * 'output' => array(
-     * 'clover' => 'coverage.xml',
-     * 'php' => 'coverage.php'
-     * )
-     * ));
-     *
-     * $clover->process($coverage, 'coverage.xml')->shouldBeCalled();
-     * $php->process($coverage, 'coverage.php')->shouldBeCalled();
-     *
-     * $this->afterSuite($event);
-     * }
-     *
-     * function it_should_color_output_text_report_by_default(
-     * CodeCoverage $coverage,
-     * Report\Text $text,
-     * SuiteEvent $event,
-     * ConsoleIO $io
-     * ) {
-     * $reports = array(
-     * 'text' => $text
-     * );
-     *
-     * $this->beConstructedWith($io, $coverage, $reports);
-     * $this->setOptions(array(
-     * 'format' => 'text'
-     * ));
-     *
-     * $io->isVerbose()->willReturn(false);
-     * $io->isDecorated()->willReturn(true);
-     *
-     * $text->process($coverage, true)->willReturn('report');
-     * $io->writeln('report')->shouldBeCalled();
-     *
-     * $this->afterSuite($event);
-     * }
-     *
-     * function it_should_not_color_output_text_report_unless_specified(
-     * CodeCoverage $coverage,
-     * Report\Text $text,
-     * SuiteEvent $event,
-     * ConsoleIO $io
-     * ) {
-     * $reports = array(
-     * 'text' => $text
-     * );
-     *
-     * $this->beConstructedWith($io, $coverage, $reports);
-     * $this->setOptions(array(
-     * 'format' => 'text'
-     * ));
-     *
-     * $io->isVerbose()->willReturn(false);
-     * $io->isDecorated()->willReturn(false);
-     *
-     * $text->process($coverage, false)->willReturn('report');
-     * $io->writeln('report')->shouldBeCalled();
-     *
-     * $this->afterSuite($event);
-     * }
-     *
-     * function it_should_output_html_report(
-     * CodeCoverage $coverage,
-     * Report\Html\Facade $html,
-     * SuiteEvent $event,
-     * ConsoleIO $io
-     * ) {
-     * $reports = array(
-     * 'html' => $html
-     * );
-     *
-     * $this->beConstructedWith($io, $coverage, $reports);
-     * $this->setOptions(array(
-     * 'format' => 'html',
-     * 'output' => array('html' => 'coverage'),
-     * ));
-     *
-     * $io->isVerbose()->willReturn(false);
-     * $io->writeln(Argument::any())->shouldNotBeCalled();
-     *
-     * $html->process($coverage, 'coverage')->willReturn('report');
-     *
-     * $this->afterSuite($event);
-     * }
-     *
-     * function it_should_provide_extra_output_in_verbose_mode(
-     * CodeCoverage $coverage,
-     * Report\Html\Facade $html,
-     * SuiteEvent $event,
-     * ConsoleIO $io
-     * ) {
-     * $reports = array(
-     * 'html' => $html,
-     * );
-     *
-     * $this->beConstructedWith($io, $coverage, $reports);
-     * $this->setOptions(array(
-     * 'format' => 'html',
-     * 'output' => array('html' => 'coverage'),
-     * ));
-     *
-     * $io->isVerbose()->willReturn(true);
-     * $io->writeln('')->shouldBeCalled();
-     * $io->writeln('Generating code coverage report in html format ...')->shouldBeCalled();
-     *
-     * $this->afterSuite($event);
-     * }
-     *
-     * function it_should_correctly_handle_black_listed_files_and_directories(
-     * CodeCoverage $coverage,
-     * SuiteEvent $event,
-     * Filter $filter,
-     * ConsoleIO $io
-     * )
-     * {
-     * $this->beConstructedWith($io, $coverage, array());
-     *
-     * $coverage->filter()->willReturn($filter);
-     *
-     * $this->setOptions(array(
-     * 'whitelist' => array('src'),
-     * 'blacklist' => array('src/filter'),
-     * 'whitelist_files' => array('src/filter/whilelisted_file'),
-     * 'blacklist_files' => array('src/filtered_file')
-     * ));
-     *
-     * $filter->addDirectoryToWhitelist('src')->shouldBeCalled();
-     * $filter->removeDirectoryFromWhitelist('src/filter')->shouldBeCalled();
-     * $filter->addFileToWhitelist('src/filter/whilelisted_file')->shouldBeCalled();
-     * $filter->removeFileFromWhitelist('src/filtered_file')->shouldBeCalled();
-     *
-     * $this->beforeSuite($event);
-     * }
-     */
+    public function it_will_throw_if_the_directory_filter_option_type_is_not_supported(SuiteEvent $event)
+    {
+        $this->setOptions([
+            'whitelist' => [
+                new stdClass(),
+            ],
+        ]);
+
+        $this
+            ->shouldThrow(ConfigurationException::class)
+            ->during('beforeSuite', [$event]);
+    }
+
+    public function it_will_throw_if_the_directory_parameter_is_missing(SuiteEvent $event)
+    {
+        $this->setOptions([
+            'whitelist' => [
+                ['foobar' => 'baz', 'suffix' => 'Spec.php', 'prefix' => 'Get'],
+            ],
+        ]);
+
+        $this
+            ->shouldThrow(ConfigurationException::class)
+            ->during('beforeSuite', [$event]);
+    }
+
+    public function let(ConsoleIO $io)
+    {
+        $codeCoverage = new CodeCoverage(new DriverStub(), new Filter());
+
+        $this->beConstructedWith($io, $codeCoverage, []);
+    }
+}
+
+class DriverStub extends Driver
+{
+    public function nameAndVersion(): string
+    {
+        return 'DriverStub';
+    }
+
+    public function start(bool $determineUnusedAndDead = true): void
+    {
+    }
+
+    public function stop(): RawCodeCoverageData
+    {
+        return RawCodeCoverageData::fromXdebugWithoutPathCoverage([]);
+    }
 }

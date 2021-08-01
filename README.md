@@ -133,6 +133,9 @@ extensions:
     # Blacklist files for which code generation should NOT be done
     #blacklist_files:
       #- lib/bootstrap.php
+    #
+    # Require minimum code coverage (in percent - e.g., 91.15)
+    #min_coverage: 100
 ```
 
 ### Options

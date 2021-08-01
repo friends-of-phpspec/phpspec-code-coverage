@@ -14,12 +14,17 @@ declare(strict_types=1);
 
 namespace FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener;
 
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Exception\ConfigurationException;
 use PhpSpec\Console\ConsoleIO;
 use PhpSpec\Event\ExampleEvent;
 use PhpSpec\Event\SuiteEvent;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\Report;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+use function gettype;
+use function is_array;
+use function is_string;
 
 /**
  * @author Henrik Bjornskov
@@ -146,19 +151,21 @@ class CodeCoverageListener implements EventSubscriberInterface
         $filter = $this->coverage->filter();
 
         foreach ($this->options['whitelist'] as $option) {
-            $filter->addDirectoryToWhitelist($option);
+            $settings = $this->filterDirectoryParams($option);
+
+            $filter->includeDirectory($settings['directory'], $settings['suffix'], $settings['prefix']);
         }
 
         foreach ($this->options['blacklist'] as $option) {
-            $filter->removeDirectoryFromWhitelist($option);
+            $settings = $this->filterDirectoryParams($option);
+
+            $filter->excludeDirectory($settings['directory'], $settings['suffix'], $settings['prefix']);
         }
 
-        foreach ($this->options['whitelist_files'] as $option) {
-            $filter->addFilesToWhitelist($option);
-        }
+        $filter->includeFiles($this->options['whitelist_files']);
 
         foreach ($this->options['blacklist_files'] as $option) {
-            $filter->removeFileFromWhitelist($option);
+            $filter->excludeFile($option);
         }
     }
 
@@ -181,5 +188,34 @@ class CodeCoverageListener implements EventSubscriberInterface
     public function setOptions(array $options): void
     {
         $this->options = $options + $this->options;
+    }
+
+    /**
+     * @param array<string, string>|string $option
+     *
+     * @return array{directory:string, prefix:string, suffix:string}
+     */
+    protected function filterDirectoryParams($option): array
+    {
+        if (is_string($option)) {
+            $option = ['directory' => $option];
+        }
+
+        if (!is_array($option)) {
+            throw new ConfigurationException(sprintf(
+                'Directory filtering options must be a string or an associated array, %s given instead.',
+                gettype($option)
+            ));
+        }
+
+        if (!isset($option['directory'])) {
+            throw new ConfigurationException('Missing required directory path.');
+        }
+
+        return [
+            'directory' => $option['directory'],
+            'suffix' => $option['suffix'] ?? '.php',
+            'prefix' => $option['prefix'] ?? '',
+        ];
     }
 }
