@@ -16,6 +16,8 @@ namespace FriendsOfPhpSpec\PhpSpec\CodeCoverage;
 
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Exception\NoCoverageDriverAvailableException;
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener\CodeCoverageListener;
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener\CodeCoverageRatioListener;
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener\NullListener;
 use PhpSpec\Console\ConsoleIO;
 use PhpSpec\Extension;
 use PhpSpec\ServiceContainer;
@@ -99,6 +101,8 @@ class CodeCoverageExtension implements Extension
                 $options['show_only_summary'] = false;
             }
 
+            $options['min_coverage'] = $options['min_coverage'] ?? 0.0;
+
             return $options;
         });
 
@@ -171,5 +175,23 @@ class CodeCoverageExtension implements Extension
 
             return $listener;
         }, ['event_dispatcher.listeners']);
+
+        $container
+            ->define('event_dispatcher.listeners.code_coverage_ratio', static function (ServiceContainer $container) {
+                /** @var InputInterface $input */
+                $input = $container->get('console.input');
+
+                /** @var array<string, mixed> $options */
+                $options = $container->get('code_coverage.options');
+
+                if ($input->hasOption('no-coverage') && $input->getOption('no-coverage')) {
+                    return new NullListener();
+                }
+
+                /** @var CodeCoverage $codeCoverage */
+                $codeCoverage = $container->get('code_coverage');
+
+                return new CodeCoverageRatioListener($codeCoverage, $options['min_coverage']);
+            }, ['event_dispatcher.listeners']);
     }
 }
