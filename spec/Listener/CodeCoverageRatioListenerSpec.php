@@ -38,9 +38,12 @@ class CodeCoverageRatioListenerSpec extends ObjectBehavior
 
     public function it_should_throw_an_error_if_the_minimum_coverage_is_not_met(SuiteEvent $event)
     {
+        $rawCoverageArray = $this->createRawCoverageArray('foobar.php', 10, 0)
+            + $this->createRawCoverageArray('acme.php', 10, 10);
+
         $this->beConstructedWith(
-            $coverage = new CodeCoverage($this->createDriverStub(5, 5), new Filter()),
-            75.0
+            $coverage = new CodeCoverage($this->createDriverStub($rawCoverageArray), new Filter()),
+            66.68
         );
         $coverage->start('acme-foobar');
         $coverage->stop();
@@ -50,33 +53,27 @@ class CodeCoverageRatioListenerSpec extends ObjectBehavior
 
     public function let()
     {
+        $rawCoverageArray = $this->createRawCoverageArray('foobar.php', 10, 0);
         $this->beConstructedWith(
-            $this->coverage = new CodeCoverage($this->createDriverStub(1), new Filter()),
+            $this->coverage = new CodeCoverage($this->createDriverStub($rawCoverageArray), new Filter()),
             100
         );
     }
 
     /**
-     * @param mixed $coveredCount
-     * @param mixed $uncoveredCount
+     * @param array<string, array> $rawCoverageArray
      */
-    private function createDriverStub($coveredCount, $uncoveredCount = 0): Driver
+    private function createDriverStub($rawCoverageArray): Driver
     {
-        return new class($coveredCount, $uncoveredCount) extends Driver {
+        return new class($rawCoverageArray) extends Driver {
             /**
-             * @var int
+             * @var array<string, array>
              */
-            private $coveredCount;
+            private $rawCoverageArray;
 
-            /**
-             * @var int
-             */
-            private $uncoveredCount;
-
-            public function __construct($coveredCount, $uncoveredCount = 0)
+            public function __construct(array $rawCoverageArray)
             {
-                $this->coveredCount = $coveredCount;
-                $this->uncoveredCount = $uncoveredCount;
+                $this->rawCoverageArray = $rawCoverageArray;
             }
 
             public function nameAndVersion(): string
@@ -90,13 +87,23 @@ class CodeCoverageRatioListenerSpec extends ObjectBehavior
 
             public function stop(): RawCodeCoverageData
             {
-                $rawCoverage = [
-                    __FILE__ => array_fill(10, $this->coveredCount, 1)
-                        + array_fill(10 + $this->coveredCount, $this->uncoveredCount, -1),
-                ];
-
-                return RawCodeCoverageData::fromXdebugWithoutPathCoverage($rawCoverage);
+                return RawCodeCoverageData::fromXdebugWithoutPathCoverage($this->rawCoverageArray);
             }
         };
+    }
+
+    /**
+     * @param string $file
+     * @param int $coveredCount
+     * @param int $uncoveredCount
+     *
+     * @return array<string, array>
+     */
+    private function createRawCoverageArray($file, $coveredCount, $uncoveredCount): array
+    {
+        return [
+            $file => array_fill(10, $coveredCount, 1)
+                + array_fill(10 + $coveredCount, $uncoveredCount, -1),
+        ];
     }
 }

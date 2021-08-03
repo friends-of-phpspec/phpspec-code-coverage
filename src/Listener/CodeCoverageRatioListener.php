@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener;
 
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Exception\LowCoverageRatioException;
+use Generator;
 use PhpSpec\Event\SuiteEvent;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\ProcessedCodeCoverageData;
@@ -60,22 +61,20 @@ final class CodeCoverageRatioListener implements EventSubscriberInterface
      */
     private function calculateRatio(ProcessedCodeCoverageData $coverageData)
     {
-        return $this->calculateRatioForEachFiles($coverageData->lineCoverage());
+        $lines = iterator_to_array($this->flattenLineCoverage($coverageData->lineCoverage()), false);
+
+        return count(array_filter($lines)) / count($lines);
     }
 
     /**
      * @param array<string, array> $lineCoverage
-     * @param float $initialRatio
-     *
-     * @return float
      */
-    private function calculateRatioForEachFiles(array $lineCoverage, $initialRatio = 0.0)
+    private function flattenLineCoverage($lineCoverage): Generator
     {
-        if ($lines = array_shift($lineCoverage)) {
-            $ratio = $this->calculateRatioForEachFiles($lineCoverage, count(array_filter($lines)) / count($lines));
+        if ($lineCoverage) {
+            yield from array_shift($lineCoverage);
+            yield from $this->flattenLineCoverage($lineCoverage);
         }
-
-        return $ratio ?? $initialRatio;
     }
 
     /**
