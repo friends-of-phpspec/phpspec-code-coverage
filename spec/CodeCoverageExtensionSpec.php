@@ -6,6 +6,7 @@ namespace spec\FriendsOfPhpSpec\PhpSpec\CodeCoverage;
 
 use Exception;
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\CodeCoverageExtension;
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\CodeCoverageOptions;
 use PhpSpec\ObjectBehavior;
 use PhpSpec\ServiceContainer\IndexedServiceContainer;
 
@@ -25,9 +26,10 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         $container->setParam('code_coverage', ['show_only_summary' => true]);
         $this->load($container);
 
+        /** @var CodeCoverageOptions $options */
         $options = $container->get('code_coverage.options');
 
-        if (true !== $options['show_only_summary']) {
+        if (true !== $options->showOnlySummary()) {
             throw new Exception('show_only_summary was not set');
         }
     }
@@ -37,9 +39,10 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         $container = new IndexedServiceContainer();
         $this->load($container, []);
 
+        /** @var CodeCoverageOptions $options */
         $options = $container->get('code_coverage.options');
 
-        if (false !== $options['show_only_summary']) {
+        if (false !== $options->showOnlySummary()) {
             throw new Exception('show_only_summary should be `false` by default');
         }
     }
@@ -50,9 +53,10 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         $container->setParam('code_coverage', ['format' => 'html']);
         $this->load($container);
 
+        /** @var CodeCoverageOptions $options */
         $options = $container->get('code_coverage.options');
 
-        if ($options['format'] !== ['html']) {
+        if ($options->getFormats() !== ['html']) {
             throw new Exception('Default format is not transformed to an array');
         }
     }
@@ -62,9 +66,10 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         $container = new IndexedServiceContainer();
         $this->load($container, []);
 
+        /** @var CodeCoverageOptions $options */
         $options = $container->get('code_coverage.options');
 
-        if ($options['format'] !== ['html']) {
+        if ($options->getFormats() !== ['html']) {
             throw new Exception('Default format is not html');
         }
     }
@@ -75,9 +80,10 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         $container->setParam('code_coverage', ['output' => 'test', 'format' => 'foo']);
         $this->load($container);
 
+        /** @var CodeCoverageOptions $options */
         $options = $container->get('code_coverage.options');
 
-        if (['foo' => 'test'] !== $options['output']) {
+        if (['foo' => 'test'] !== $options->getOutputPaths()) {
             throw new Exception('Default format is not singular output');
         }
     }

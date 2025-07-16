@@ -7,4 +7,14 @@ parameters:
         # phpstan has hard time to check whenever we are using PHPUnit 10 or PHPUnit 9
         -
             message: '#Class SebastianBergmann\\CodeCoverage\\Report\\Text constructor invoked with 4 parameters, 1-3 required\.#'
+            count: 1
             path: ./src/CodeCoverageExtension.php
+        -
+            message: "#^Parameter \\#1 \\$thresholds of class SebastianBergmann\\\\CodeCoverage\\\\Report\\\\Text constructor expects SebastianBergmann\\\\CodeCoverage\\\\Report\\\\Thresholds, int given\\.$#"
+            count: 1
+            path: src/CodeCoverageExtension.php
+
+        -
+            message: "#^Parameter \\#2 \\$showUncoveredFiles of class SebastianBergmann\\\\CodeCoverage\\\\Report\\\\Text constructor expects bool, int given\\.$#"
+            count: 1
+            path: src/CodeCoverageExtension.php

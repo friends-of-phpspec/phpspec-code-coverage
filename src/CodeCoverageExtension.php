@@ -100,62 +100,56 @@ class CodeCoverageExtension implements Extension
                 $options['show_only_summary'] = false;
             }
 
-            return $options;
+            return new CodeCoverageOptions($options);
         });
 
         $container->define('code_coverage.reports', static function (ServiceContainer $container) {
-            /** @var array<string, mixed> $options */
-            $options = $container->get('code_coverage.options');
+            /** @var CodeCoverageOptions $optionsWrapper */
+            $optionsWrapper = $container->get('code_coverage.options');
+            $options = $optionsWrapper->getOptions();
 
             $reports = [];
 
-            foreach ($options['format'] as $format) {
+            foreach ($optionsWrapper->getFormats() as $format) {
                 switch ($format) {
                     case 'clover':
                         $reports['clover'] = new Report\Clover();
-
                         break;
                     case 'php':
                         $reports['php'] = new Report\PHP();
-
                         break;
                     case 'text':
                         $reports['text'] = version_compare(Version::id(), '10.0.0', '>=') && class_exists(Thresholds::class)
                             ? new Report\Text(
-                                Thresholds::from($options['lower_upper_bound'], $options['high_lower_bound']),
-                                $options['show_uncovered_files'],
-                                $options['show_only_summary']
+                                Thresholds::from($optionsWrapper->getLowerUpperBound(), $optionsWrapper->getHighLowerBound()),
+                                $optionsWrapper->showUncoveredFiles(), // @phpstan-ignore-line Version 10.0.0+ uses Thresholds
+                                $optionsWrapper->showOnlySummary()
                             )
                             : new Report\Text(
-                                $options['lower_upper_bound'],
-                                $options['high_lower_bound'],
-                                $options['show_uncovered_files'],
-                                $options['show_only_summary']
+                                $optionsWrapper->getLowerUpperBound(),
+                                $optionsWrapper->getHighLowerBound(),
+                                $optionsWrapper->showUncoveredFiles(),
+                                $optionsWrapper->showOnlySummary()
                             );
-
                         break;
                     case 'xml':
                         $reports['xml'] = new Report\Xml\Facade(Version::id());
-
                         break;
                     case 'crap4j':
                         $reports['crap4j'] = new Report\Crap4j();
-
                         break;
                     case 'html':
                         $reports['html'] = new Report\Html\Facade();
-
                         break;
                     case 'cobertura':
                         $reports['cobertura'] = new Report\Cobertura();
-
                         break;
                 }
             }
 
             $container->setParam('code_coverage', $options);
 
-            return $reports;
+            return new CodeCoverageReports($reports);
         });
 
         $container->define('event_dispatcher.listeners.code_coverage', static function (ServiceContainer $container) {
@@ -169,11 +163,19 @@ class CodeCoverageExtension implements Extension
             /** @var CodeCoverage $codeCoverage */
             $codeCoverage = $container->get('code_coverage');
 
-            /** @var array<string, object> $codeCoverageReports */
-            $codeCoverageReports = $container->get('code_coverage.reports');
+            /** @var CodeCoverageReports $codeCoverageReportsWrapper */
+            $codeCoverageReportsWrapper = $container->get('code_coverage.reports');
 
-            $listener = new CodeCoverageListener($consoleIO, $codeCoverage, $codeCoverageReports, $skipCoverage);
-            $listener->setOptions($container->getParam('code_coverage', []));
+            /** @var CodeCoverageOptions $optionsWrapper */
+            $optionsWrapper = $container->get('code_coverage.options');
+
+            $listener = new CodeCoverageListener(
+                $consoleIO,
+                $codeCoverage,
+                $codeCoverageReportsWrapper->getReports(),
+                $skipCoverage
+            );
+            $listener->setOptions($optionsWrapper->getOptions());
 
             return $listener;
         }, ['event_dispatcher.listeners']);
