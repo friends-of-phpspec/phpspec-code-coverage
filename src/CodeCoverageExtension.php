@@ -122,7 +122,7 @@ class CodeCoverageExtension implements Extension
                         $reports['text'] = version_compare(Version::id(), '10.0.0', '>=') && class_exists(Thresholds::class)
                             ? new Report\Text(
                                 Thresholds::from($optionsWrapper->getLowerUpperBound(), $optionsWrapper->getHighLowerBound()),
-                                $optionsWrapper->showUncoveredFiles(),
+                                $optionsWrapper->showUncoveredFiles(), // @phpstan-ignore-line Version 10.0.0+ uses Thresholds
                                 $optionsWrapper->showOnlySummary()
                             )
                             : new Report\Text(
