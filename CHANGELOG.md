@@ -6,6 +6,12 @@ documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.0.0] - 2025-09-26
+
+- Add support for PHP 8.4
+- Drop support for PHP < 8.1 (those versions aren't supported anymore by the community)
+- Add support for PHPSpec 8.0
+
 ## [6.5.0] - 2025-07-16
 
 - Fix main PHPSpec and PHP 8.4 compatibility: Wrap service container arrays in objects [#64](https://github.com/friends-of-phpspec/phpspec-code-coverage/pull/64)
