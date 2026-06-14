@@ -7,8 +7,18 @@ namespace spec\FriendsOfPhpSpec\PhpSpec\CodeCoverage;
 use Exception;
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\CodeCoverageExtension;
 use FriendsOfPhpSpec\PhpSpec\CodeCoverage\CodeCoverageOptions;
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\CodeCoverageReports;
+use FriendsOfPhpSpec\PhpSpec\CodeCoverage\Listener\CodeCoverageListener;
+use PhpSpec\Console\ConsoleIO;
 use PhpSpec\ObjectBehavior;
 use PhpSpec\ServiceContainer\IndexedServiceContainer;
+use SebastianBergmann\CodeCoverage\CodeCoverage;
+use SebastianBergmann\CodeCoverage\Driver\Driver;
+use SebastianBergmann\CodeCoverage\Filter;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Input\InputDefinition;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * @author Henrik Bjornskov
@@ -86,5 +96,87 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         if (['foo' => 'test'] !== $options->getOutputPaths()) {
             throw new Exception('Default format is not singular output');
         }
+    }
+
+    public function it_should_not_resolve_coverage_services_when_no_coverage_option_is_set(ConsoleIO $io): void
+    {
+        $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(true));
+        $container->set('console.io', $io->getWrappedObject());
+        $this->load($container);
+
+        $container->define('code_coverage', static function () {
+            throw new Exception('Code coverage driver should not be resolved');
+        });
+        $container->define('code_coverage.reports', static function () {
+            throw new Exception('Code coverage reports should not be resolved');
+        });
+
+        $listener = $container->get('event_dispatcher.listeners.code_coverage');
+
+        if (!$listener instanceof EventSubscriberInterface) {
+            throw new Exception('No coverage listener should still be an event subscriber');
+        }
+    }
+
+    public function it_should_not_select_coverage_driver_when_no_coverage_option_is_set(): void
+    {
+        $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(true));
+        $this->load($container);
+
+        $codeCoverage = $container->get('code_coverage');
+
+        if (!$codeCoverage instanceof CodeCoverage) {
+            throw new Exception('Code coverage service should remain type-compatible');
+        }
+    }
+
+    public function it_should_resolve_coverage_services_when_coverage_is_enabled(ConsoleIO $io, Driver $driver): void
+    {
+        $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(false));
+        $container->set('console.io', $io->getWrappedObject());
+        $this->load($container);
+
+        $coverageResolved = false;
+        $reportsResolved = false;
+
+        $container->define('code_coverage', static function () use (&$coverageResolved, $driver) {
+            $coverageResolved = true;
+
+            return new CodeCoverage($driver->getWrappedObject(), new Filter());
+        });
+        $container->define('code_coverage.reports', static function () use (&$reportsResolved) {
+            $reportsResolved = true;
+
+            return new CodeCoverageReports([]);
+        });
+
+        $listener = $container->get('event_dispatcher.listeners.code_coverage');
+
+        if (!$listener instanceof CodeCoverageListener) {
+            throw new Exception('Coverage listener should be created when coverage is enabled');
+        }
+
+        if (!$coverageResolved) {
+            throw new Exception('Code coverage driver should be resolved');
+        }
+
+        if (!$reportsResolved) {
+            throw new Exception('Code coverage reports should be resolved');
+        }
+    }
+
+    private function createInput(bool $noCoverage): ArrayInput
+    {
+        $parameters = [];
+        if ($noCoverage) {
+            $parameters['--no-coverage'] = true;
+        }
+
+        return new ArrayInput($parameters, new InputDefinition([
+            new InputOption('no-coverage', null, InputOption::VALUE_NONE),
+        ]));
     }
 }
