@@ -16,6 +16,7 @@ use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\Driver\Driver;
 use SebastianBergmann\CodeCoverage\Filter;
 use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -101,6 +102,26 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
     {
         $container = new IndexedServiceContainer();
         $container->set('console.input', $this->createInput(true));
+
+        $this->load($container);
+
+        foreach ([
+            'code_coverage.filter',
+            'code_coverage',
+            'code_coverage.options',
+            'code_coverage.reports',
+            'event_dispatcher.listeners.code_coverage',
+        ] as $serviceId) {
+            if ($container->has($serviceId)) {
+                throw new Exception(sprintf('Service "%s" should not be defined', $serviceId));
+            }
+        }
+    }
+
+    public function it_should_not_define_coverage_services_when_no_coverage_is_passed_as_a_raw_cli_option(): void
+    {
+        $container = new IndexedServiceContainer();
+        $container->set('console.input', new ArgvInput(['phpspec', 'run', '--no-coverage']));
 
         $this->load($container);
 

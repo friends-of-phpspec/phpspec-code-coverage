@@ -31,7 +31,6 @@ use Symfony\Component\Console\Input\InputOption;
 
 use function count;
 use function is_array;
-use function method_exists;
 
 /**
  * Injects Code Coverage Event Subscriber into the EventDispatcher.
@@ -191,12 +190,12 @@ class CodeCoverageExtension implements Extension
         /** @var InputInterface $input */
         $input = $container->get('console.input');
 
-        if ($input->hasOption('no-coverage') && $input->getOption('no-coverage')) {
+        if ($input->hasParameterOption('--no-coverage', true)) {
             return true;
         }
 
-        if (method_exists($input, 'getRawTokens')) {
-            return in_array('--no-coverage', $input->getRawTokens(), true);
+        if ($input->hasOption('no-coverage') && $input->getOption('no-coverage')) {
+            return true;
         }
 
         return false;
