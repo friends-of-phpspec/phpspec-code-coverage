@@ -18,7 +18,6 @@ use SebastianBergmann\CodeCoverage\Filter;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * @author Henrik Bjornskov
@@ -98,37 +97,23 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         }
     }
 
-    public function it_should_not_resolve_coverage_services_when_no_coverage_option_is_set(ConsoleIO $io): void
+    public function it_should_not_define_coverage_services_when_no_coverage_option_is_set(): void
     {
         $container = new IndexedServiceContainer();
         $container->set('console.input', $this->createInput(true));
-        $container->set('console.io', $io->getWrappedObject());
+
         $this->load($container);
 
-        $container->define('code_coverage', static function () {
-            throw new Exception('Code coverage driver should not be resolved');
-        });
-        $container->define('code_coverage.reports', static function () {
-            throw new Exception('Code coverage reports should not be resolved');
-        });
-
-        $listener = $container->get('event_dispatcher.listeners.code_coverage');
-
-        if (!$listener instanceof EventSubscriberInterface) {
-            throw new Exception('No coverage listener should still be an event subscriber');
-        }
-    }
-
-    public function it_should_not_select_coverage_driver_when_no_coverage_option_is_set(): void
-    {
-        $container = new IndexedServiceContainer();
-        $container->set('console.input', $this->createInput(true));
-        $this->load($container);
-
-        $codeCoverage = $container->get('code_coverage');
-
-        if (!$codeCoverage instanceof CodeCoverage) {
-            throw new Exception('Code coverage service should remain type-compatible');
+        foreach ([
+            'code_coverage.filter',
+            'code_coverage',
+            'code_coverage.options',
+            'code_coverage.reports',
+            'event_dispatcher.listeners.code_coverage',
+        ] as $serviceId) {
+            if ($container->has($serviceId)) {
+                throw new Exception(sprintf('Service "%s" should not be defined', $serviceId));
+            }
         }
     }
 

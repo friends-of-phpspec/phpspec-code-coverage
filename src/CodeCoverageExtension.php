@@ -21,8 +21,6 @@ use PhpSpec\Extension;
 use PhpSpec\ServiceContainer;
 use RuntimeException;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
-use SebastianBergmann\CodeCoverage\Data\RawCodeCoverageData;
-use SebastianBergmann\CodeCoverage\Driver\Driver;
 use SebastianBergmann\CodeCoverage\Driver\Selector;
 use SebastianBergmann\CodeCoverage\Filter;
 use SebastianBergmann\CodeCoverage\Report;
@@ -30,10 +28,10 @@ use SebastianBergmann\CodeCoverage\Report\Thresholds;
 use SebastianBergmann\CodeCoverage\Version;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 use function count;
 use function is_array;
+use function method_exists;
 
 /**
  * Injects Code Coverage Event Subscriber into the EventDispatcher.
@@ -52,6 +50,10 @@ class CodeCoverageExtension implements Extension
             $command->addOption('no-coverage', null, InputOption::VALUE_NONE, 'Skip code coverage generation');
         }
 
+        if (self::shouldSkipCoverage($container)) {
+            return;
+        }
+
         $container->define('code_coverage.filter', static function () {
             return new Filter();
         });
@@ -59,24 +61,6 @@ class CodeCoverageExtension implements Extension
         $container->define('code_coverage', static function (ServiceContainer $container) {
             /** @var Filter $filter */
             $filter = $container->get('code_coverage.filter');
-
-            if (self::shouldSkipCoverage($container)) {
-                return new CodeCoverage(new class extends Driver {
-                    public function nameAndVersion(): string
-                    {
-                        return 'No coverage';
-                    }
-
-                    public function start(): void
-                    {
-                    }
-
-                    public function stop(): RawCodeCoverageData
-                    {
-                        return RawCodeCoverageData::fromXdebugWithoutPathCoverage([]);
-                    }
-                }, $filter);
-            }
 
             try {
                 return new CodeCoverage((new Selector())->forLineCoverage($filter), $filter);
@@ -174,15 +158,6 @@ class CodeCoverageExtension implements Extension
         });
 
         $container->define('event_dispatcher.listeners.code_coverage', static function (ServiceContainer $container) {
-            if (self::shouldSkipCoverage($container)) {
-                return new class implements EventSubscriberInterface {
-                    public static function getSubscribedEvents(): array
-                    {
-                        return [];
-                    }
-                };
-            }
-
             /** @var ConsoleIO $consoleIO */
             $consoleIO = $container->get('console.io');
 
@@ -209,9 +184,21 @@ class CodeCoverageExtension implements Extension
 
     private static function shouldSkipCoverage(ServiceContainer $container): bool
     {
+        if (!$container->has('console.input')) {
+            return false;
+        }
+
         /** @var InputInterface $input */
         $input = $container->get('console.input');
 
-        return $input->hasOption('no-coverage') && $input->getOption('no-coverage');
+        if ($input->hasOption('no-coverage') && $input->getOption('no-coverage')) {
+            return true;
+        }
+
+        if (method_exists($input, 'getRawTokens')) {
+            return in_array('--no-coverage', $input->getRawTokens(), true);
+        }
+
+        return false;
     }
 }
