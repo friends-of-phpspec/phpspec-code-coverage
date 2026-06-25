@@ -31,6 +31,8 @@ use Symfony\Component\Console\Input\InputOption;
 
 use function count;
 use function is_array;
+use function is_string;
+use function str_starts_with;
 
 /**
  * Injects Code Coverage Event Subscriber into the EventDispatcher.
@@ -47,6 +49,10 @@ class CodeCoverageExtension implements Extension
     {
         foreach ($container->getByTag('console.commands') as $command) {
             $command->addOption('no-coverage', null, InputOption::VALUE_NONE, 'Skip code coverage generation');
+        }
+
+        if (self::shouldSkipCoverage($container)) {
+            return;
         }
 
         $container->define('code_coverage.filter', static function () {
@@ -153,10 +159,6 @@ class CodeCoverageExtension implements Extension
         });
 
         $container->define('event_dispatcher.listeners.code_coverage', static function (ServiceContainer $container) {
-            /** @var InputInterface $input */
-            $input = $container->get('console.input');
-            $skipCoverage = $input->hasOption('no-coverage') && $input->getOption('no-coverage');
-
             /** @var ConsoleIO $consoleIO */
             $consoleIO = $container->get('console.io');
 
@@ -173,11 +175,48 @@ class CodeCoverageExtension implements Extension
                 $consoleIO,
                 $codeCoverage,
                 $codeCoverageReportsWrapper->getReports(),
-                $skipCoverage
+                false
             );
             $listener->setOptions($optionsWrapper->getOptions());
 
             return $listener;
         }, ['event_dispatcher.listeners']);
+    }
+
+    private static function shouldSkipCoverage(ServiceContainer $container): bool
+    {
+        if (!$container->has('console.input')) {
+            return self::argvHasNoCoverageOption();
+        }
+
+        /** @var InputInterface $input */
+        $input = $container->get('console.input');
+
+        if ($input->hasParameterOption('--no-coverage', true)) {
+            return true;
+        }
+
+        if ($input->hasOption('no-coverage') && $input->getOption('no-coverage')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static function argvHasNoCoverageOption(): bool
+    {
+        $argv = $_SERVER['argv'] ?? [];
+
+        if (!is_array($argv)) {
+            return false;
+        }
+
+        foreach ($argv as $argument) {
+            if (is_string($argument) && ('--no-coverage' === $argument || str_starts_with($argument, '--no-coverage='))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

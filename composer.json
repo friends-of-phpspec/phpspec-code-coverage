@@ -50,7 +50,8 @@
     },
     "require-dev": {
         "phpstan/phpstan": "^1.5",
-        "friendsofphp/php-cs-fixer": "^3.4"
+        "friendsofphp/php-cs-fixer": "^3.4",
+        "webmozart/assert": "^1.11 || ^2.0"
     },
     "conflict": {
         "sebastian/comparator": "< 2.0"
