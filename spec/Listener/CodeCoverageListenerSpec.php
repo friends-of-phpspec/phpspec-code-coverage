@@ -50,8 +50,8 @@ class CodeCoverageListenerSpec extends ObjectBehavior
             ],
             'blacklist_files' => [
                 'path/to/file.php',
-                'path/to/file2.php'
-            ]
+                'path/to/file2.php',
+            ],
         ]);
 
         $this

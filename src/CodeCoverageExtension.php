@@ -31,6 +31,8 @@ use Symfony\Component\Console\Input\InputOption;
 
 use function count;
 use function is_array;
+use function is_string;
+use function str_starts_with;
 
 /**
  * Injects Code Coverage Event Subscriber into the EventDispatcher.
@@ -184,7 +186,7 @@ class CodeCoverageExtension implements Extension
     private static function shouldSkipCoverage(ServiceContainer $container): bool
     {
         if (!$container->has('console.input')) {
-            return false;
+            return self::argvHasNoCoverageOption();
         }
 
         /** @var InputInterface $input */
@@ -196,6 +198,23 @@ class CodeCoverageExtension implements Extension
 
         if ($input->hasOption('no-coverage') && $input->getOption('no-coverage')) {
             return true;
+        }
+
+        return false;
+    }
+
+    private static function argvHasNoCoverageOption(): bool
+    {
+        $argv = $_SERVER['argv'] ?? [];
+
+        if (!is_array($argv)) {
+            return false;
+        }
+
+        foreach ($argv as $argument) {
+            if (is_string($argument) && ('--no-coverage' === $argument || str_starts_with($argument, '--no-coverage='))) {
+                return true;
+            }
         }
 
         return false;

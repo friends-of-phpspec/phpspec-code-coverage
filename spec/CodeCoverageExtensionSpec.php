@@ -33,6 +33,7 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
     public function it_should_allow_to_set_show_only_summary_option(): void
     {
         $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(false));
         $container->setParam('code_coverage', ['show_only_summary' => true]);
         $this->load($container);
 
@@ -47,6 +48,7 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
     public function it_should_not_use_show_only_summary_option_by_default(): void
     {
         $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(false));
         $this->load($container, []);
 
         /** @var CodeCoverageOptions $options */
@@ -60,6 +62,7 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
     public function it_should_transform_format_into_array(): void
     {
         $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(false));
         $container->setParam('code_coverage', ['format' => 'html']);
         $this->load($container);
 
@@ -74,6 +77,7 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
     public function it_should_use_html_format_by_default(): void
     {
         $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(false));
         $this->load($container, []);
 
         /** @var CodeCoverageOptions $options */
@@ -87,6 +91,7 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
     public function it_should_use_singular_output(): void
     {
         $container = new IndexedServiceContainer();
+        $container->set('console.input', $this->createInput(false));
         $container->setParam('code_coverage', ['output' => 'test', 'format' => 'foo']);
         $this->load($container);
 
@@ -124,6 +129,35 @@ class CodeCoverageExtensionSpec extends ObjectBehavior
         $container->set('console.input', new ArgvInput(['phpspec', 'run', '--no-coverage']));
 
         $this->load($container);
+
+        foreach ([
+            'code_coverage.filter',
+            'code_coverage',
+            'code_coverage.options',
+            'code_coverage.reports',
+            'event_dispatcher.listeners.code_coverage',
+        ] as $serviceId) {
+            if ($container->has($serviceId)) {
+                throw new Exception(sprintf('Service "%s" should not be defined', $serviceId));
+            }
+        }
+    }
+
+    public function it_should_not_define_coverage_services_when_console_input_is_not_registered_yet(): void
+    {
+        $container = new IndexedServiceContainer();
+        $originalArgv = $_SERVER['argv'] ?? null;
+        $_SERVER['argv'] = ['phpspec', 'run', '--no-coverage'];
+
+        try {
+            $this->load($container);
+        } finally {
+            if (null === $originalArgv) {
+                unset($_SERVER['argv']);
+            } else {
+                $_SERVER['argv'] = $originalArgv;
+            }
+        }
 
         foreach ([
             'code_coverage.filter',
